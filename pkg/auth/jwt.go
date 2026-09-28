@@ -219,6 +219,11 @@ func (t *tokenAuth) VerifyAndRetrieveUser(c *gin.Context) (bool, error) {
 	if !ok || claims.TokenType != TokenTypeAccess {
 		return false, serializer.NewError(serializer.CodeCredentialInvalid, "Invalid token type", nil)
 	}
+	if claims.RootTokenID != nil {
+		if _, revoked := t.kv.Get(fmt.Sprintf("%s%s", RevokeTokenPrefix, claims.RootTokenID.String())); revoked {
+			return false, serializer.NewError(serializer.CodeCredentialInvalid, "Session revoked", nil)
+		}
+	}
 
 	uid, err := t.idEncoder.Decode(claims.Subject, hashid.UserID)
 	if err != nil {
@@ -251,7 +256,8 @@ func (t *tokenAuth) Issue(ctx context.Context, args *IssueTokenArgs) (*Token, er
 	}
 
 	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
-		TokenType: TokenTypeAccess,
+		TokenType:   TokenTypeAccess,
+		RootTokenID: rootTokenID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   uidEncoded,
 			NotBefore: jwt.NewNumericDate(issueDate),
