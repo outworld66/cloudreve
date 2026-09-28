@@ -40,6 +40,7 @@ type SiteConfig struct {
 	CapSiteKey       string              `json:"captcha_cap_site_key,omitempty"`
 	CapAssetServer   string              `json:"captcha_cap_asset_server,omitempty"`
 	RegisterEnabled  bool                `json:"register_enabled,omitempty"`
+	UserPassEnabled  bool                `json:"userpass_enabled,omitempty"`
 	TosUrl           string              `json:"tos_url,omitempty"`
 	PrivacyPolicyUrl string              `json:"privacy_policy_url,omitempty"`
 	SSOEnabled       bool                `json:"sso_enabled,omitempty"`
@@ -77,6 +78,14 @@ type SiteConfig struct {
 	//AppForumLink         string              `json:"app_forum"`
 }
 
+func UserPassEnabled() bool {
+	return os.Getenv("CR_USERPASS_ENABLED") != "false"
+}
+
+func PasskeyEnabled() bool {
+	return os.Getenv("CR_PASSKEY_ENABLED") != "false"
+}
+
 type (
 	GetSettingService struct {
 		Section string `uri:"section" binding:"required"`
@@ -95,8 +104,9 @@ func (s *GetSettingService) GetSiteConfig(c *gin.Context) (*SiteConfig, error) {
 			LoginCaptcha:     settings.LoginCaptchaEnabled(c),
 			RegCaptcha:       settings.RegCaptchaEnabled(c),
 			ForgetCaptcha:    settings.ForgotPasswordCaptchaEnabled(c),
-			Authn:            settings.AuthnEnabled(c),
+			Authn:            settings.AuthnEnabled(c) && PasskeyEnabled(),
 			RegisterEnabled:  settings.RegisterEnabled(c),
+			UserPassEnabled:  UserPassEnabled(),
 			PrivacyPolicyUrl: legalDocs.PrivacyPolicy,
 			TosUrl:           legalDocs.TermsOfService,
 			SSOEnabled:       os.Getenv("CR_OIDC_ISSUER") != "",

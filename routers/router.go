@@ -290,6 +290,9 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 			{
 				// 用户登录
 				token.POST("",
+					middleware.IsFunctionEnabled(func(c *gin.Context) bool {
+						return basic.UserPassEnabled()
+					}),
 					middleware.CaptchaRequired(func(c *gin.Context) bool {
 						return dep.SettingProvider().LoginCaptchaEnabled(c)
 					}),
@@ -299,6 +302,9 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 				)
 				// 2-factor authentication
 				token.POST("2fa",
+					middleware.IsFunctionEnabled(func(c *gin.Context) bool {
+						return basic.UserPassEnabled()
+					}),
 					controllers.FromJSON[usersvc.OtpValidationService](usersvc.OtpValidationParameterCtx{}),
 					controllers.UserLogin2FAValidation,
 					controllers.UserIssueToken,
@@ -316,6 +322,9 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 
 			// Prepare login
 			session.GET("prepare",
+				middleware.IsFunctionEnabled(func(c *gin.Context) bool {
+					return basic.UserPassEnabled()
+				}),
 				controllers.FromQuery[usersvc.PrepareLoginService](usersvc.PrepareLoginParameterCtx{}),
 				controllers.UserPrepareLogin,
 			)
@@ -364,14 +373,14 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 				// WebAuthn login prepare
 				authn.PUT("",
 					middleware.IsFunctionEnabled(func(c *gin.Context) bool {
-						return dep.SettingProvider().AuthnEnabled(c)
+						return dep.SettingProvider().AuthnEnabled(c) && basic.PasskeyEnabled()
 					}),
 					controllers.StartLoginAuthn,
 				)
 				// WebAuthn finish login
 				authn.POST("",
 					middleware.IsFunctionEnabled(func(c *gin.Context) bool {
-						return dep.SettingProvider().AuthnEnabled(c)
+						return dep.SettingProvider().AuthnEnabled(c) && basic.PasskeyEnabled()
 					}),
 					controllers.FromJSON[usersvc.FinishPasskeyLoginService](usersvc.FinishPasskeyLoginParameterCtx{}),
 					controllers.FinishLoginAuthn,
@@ -386,7 +395,7 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 			// 用户注册 Done
 			user.POST("",
 				middleware.IsFunctionEnabled(func(c *gin.Context) bool {
-					return dep.SettingProvider().RegisterEnabled(c)
+					return dep.SettingProvider().RegisterEnabled(c) && basic.UserPassEnabled()
 				}),
 				middleware.CaptchaRequired(func(c *gin.Context) bool {
 					return dep.SettingProvider().RegCaptchaEnabled(c)
@@ -396,12 +405,18 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 			)
 			// 通过邮件里的链接重设密码
 			user.PATCH("reset/:id",
+				middleware.IsFunctionEnabled(func(c *gin.Context) bool {
+					return basic.UserPassEnabled()
+				}),
 				middleware.HashID(hashid.UserID),
 				controllers.FromJSON[usersvc.UserResetService](usersvc.UserResetParameterCtx{}),
 				controllers.UserReset,
 			)
 			// 发送密码重设邮件
 			user.POST("reset",
+				middleware.IsFunctionEnabled(func(c *gin.Context) bool {
+					return basic.UserPassEnabled()
+				}),
 				middleware.CaptchaRequired(func(c *gin.Context) bool {
 					return dep.SettingProvider().ForgotPasswordCaptchaEnabled(c)
 				}),
