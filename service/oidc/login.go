@@ -66,6 +66,9 @@ func randomString() (string, error) {
 }
 
 func redirectURL(c *gin.Context) string {
+	if configuredURL := os.Getenv("CR_OIDC_REDIRECT_URL"); configuredURL != "" {
+		return strings.TrimRight(configuredURL, "/")
+	}
 	base := dependency.FromContext(c).SettingProvider().SiteURL(c)
 	return strings.TrimRight(base.String(), "/") + "/api/v4/session/oidc/callback"
 }
