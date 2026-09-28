@@ -17,6 +17,7 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/ent/user"
 	"github.com/cloudreve/Cloudreve/v4/inventory"
 	"github.com/cloudreve/Cloudreve/v4/pkg/auth"
+	"github.com/cloudreve/Cloudreve/v4/pkg/hashid"
 	usersvc "github.com/cloudreve/Cloudreve/v4/service/user"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
@@ -314,11 +315,12 @@ func BackchannelLogout(c *gin.Context) {
 		c.Status(400)
 		return
 	}
+	ttl := int(dep.SettingProvider().TokenAuth(c).RefreshTokenTTL.Seconds() + 10)
+	_ = dep.KV().Set(auth.UserRevokePrefix+hashid.EncodeUserID(dep.HashIDEncoder(), uid), time.Now().Unix(), ttl)
 	key := rootsPrefix + strconv.Itoa(uid)
 	if rawRoots, exists := dep.KV().Get(key); exists {
 		var roots []string
 		if json.Unmarshal([]byte(rawRoots.(string)), &roots) == nil {
-			ttl := int(dep.SettingProvider().TokenAuth(c).RefreshTokenTTL.Seconds() + 10)
 			for _, root := range roots {
 				_ = dep.KV().Set(auth.RevokeTokenPrefix+root, true, ttl)
 			}

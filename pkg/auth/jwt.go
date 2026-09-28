@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -70,6 +71,7 @@ const (
 	AuthorizationHeader = "Authorization"
 	TokenHeaderPrefix   = "Bearer "
 	RevokeTokenPrefix   = "jwt_revoke_"
+	UserRevokePrefix    = "jwt_user_revoke_"
 )
 
 type Claims struct {
@@ -151,6 +153,11 @@ func (t *tokenAuth) Refresh(ctx context.Context, refreshToken string) (*Token, e
 	if !bytes.Equal(claims.StateHash, expectedHash[:]) {
 		return nil, ErrInvalidRefreshToken
 	}
+	if revokedAt, ok := t.kv.Get(UserRevokePrefix + claims.Subject); ok {
+		if timestamp, parseErr := strconv.ParseInt(fmt.Sprint(revokedAt), 10, 64); parseErr == nil && claims.NotBefore != nil && claims.NotBefore.Time.Unix() <= timestamp {
+			return nil, ErrInvalidRefreshToken
+		}
+	}
 
 	// Check if root token is revoked
 	if claims.RootTokenID == nil {
@@ -221,6 +228,11 @@ func (t *tokenAuth) VerifyAndRetrieveUser(c *gin.Context) (bool, error) {
 	}
 	if claims.RootTokenID != nil {
 		if _, revoked := t.kv.Get(fmt.Sprintf("%s%s", RevokeTokenPrefix, claims.RootTokenID.String())); revoked {
+			return false, serializer.NewError(serializer.CodeCredentialInvalid, "Session revoked", nil)
+		}
+	}
+	if revokedAt, ok := t.kv.Get(UserRevokePrefix + claims.Subject); ok {
+		if timestamp, err := strconv.ParseInt(fmt.Sprint(revokedAt), 10, 64); err == nil && claims.NotBefore != nil && claims.NotBefore.Time.Unix() <= timestamp {
 			return false, serializer.NewError(serializer.CodeCredentialInvalid, "Session revoked", nil)
 		}
 	}
