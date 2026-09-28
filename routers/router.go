@@ -2,6 +2,7 @@ package routers
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/cloudreve/Cloudreve/v4/application/constants"
 	"github.com/cloudreve/Cloudreve/v4/application/dependency"
@@ -20,6 +21,7 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/service/explorer"
 	"github.com/cloudreve/Cloudreve/v4/service/node"
 	"github.com/cloudreve/Cloudreve/v4/service/oauth"
+	oidcsvc "github.com/cloudreve/Cloudreve/v4/service/oidc"
 	"github.com/cloudreve/Cloudreve/v4/service/setting"
 	sharesvc "github.com/cloudreve/Cloudreve/v4/service/share"
 	usersvc "github.com/cloudreve/Cloudreve/v4/service/user"
@@ -349,6 +351,12 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 					controllers.FromUri[oauth.DeleteOAuthGrantService](oauth.DeleteOAuthGrantParamCtx{}),
 					controllers.DeleteOAuthGrant,
 				)
+			}
+			if os.Getenv("CR_OIDC_ISSUER") != "" {
+				session.GET("oidc/login", oidcsvc.Login)
+				session.GET("oidc/callback", oidcsvc.Callback)
+				session.GET("oidc/exchange", oidcsvc.Exchange)
+				session.POST("oidc/backchannel-logout", oidcsvc.BackchannelLogout)
 			}
 
 			authn := session.Group("authn")

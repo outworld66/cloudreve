@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"os"
 	"sort"
 	"strings"
 
@@ -41,6 +42,7 @@ type SiteConfig struct {
 	RegisterEnabled  bool                `json:"register_enabled,omitempty"`
 	TosUrl           string              `json:"tos_url,omitempty"`
 	PrivacyPolicyUrl string              `json:"privacy_policy_url,omitempty"`
+	SSOEnabled       bool                `json:"sso_enabled,omitempty"`
 
 	// Explorer section
 	Icons                string                     `json:"icons,omitempty"`
@@ -97,6 +99,7 @@ func (s *GetSettingService) GetSiteConfig(c *gin.Context) (*SiteConfig, error) {
 			RegisterEnabled:  settings.RegisterEnabled(c),
 			PrivacyPolicyUrl: legalDocs.PrivacyPolicy,
 			TosUrl:           legalDocs.TermsOfService,
+			SSOEnabled:       os.Getenv("CR_OIDC_ISSUER") != "",
 		}, nil
 	case "explorer":
 		explorerSettings := settings.ExplorerFrontendSettings(c)
